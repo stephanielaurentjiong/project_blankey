@@ -149,3 +149,34 @@ We are building a **web application** that allows users to upload an image along
 | **KV Cache (vLLM)** | Memory optimization storing intermediate attention states. |
 
 ---
+
+## Phase 0 Quick Start (Scientist) — Bedrock + Claude 3.5 Sonnet
+
+Minimal prototype to generate a caption from an image using AWS Bedrock Anthropic Claude 3.5 Sonnet with a predefined prompt.
+
+### Prerequisites
+- AWS account with Bedrock access to Anthropic models (Claude 3.5 Sonnet)
+- AWS credentials configured locally (env vars or `~/.aws/credentials`)
+- Python 3.9+
+
+### Install
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+```
+
+### Usage
+```bash
+python phase0/bedrock_caption_cli.py \
+  --image /path/to/image.jpg \
+  --context "sunset at the beach, chill vibe" \
+  --region us-east-1
+```
+
+Outputs a single caption string to stdout.
+
+Notes:
+- Uses a built-in prompt to produce one concise caption (<100 chars), no emojis/hashtags.
+- If the model returns JSON, the tool extracts `{ "caption": "..." }`; otherwise falls back to raw text.
+- Set `AWS_PROFILE` or pass `--profile` to select a named profile.
