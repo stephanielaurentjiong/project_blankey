@@ -9,12 +9,31 @@ Video Description: Below is a description of what the video is about:
 </Input>
 
 <Task>
-- Carefully analyze the input Video Cover and Video Description to understand the key message of the video, potential selling point that would attract audience.
-- Generate ONE concise, catchy caption under a soft limit of 20 characters, in the same language as main language used in Video Description. 
-- Make caption engaging, natural, and suitable for social media, along with the Video Cover it should attract audience to click and engage.
+- Respond in the same language as main language used in Video Description, if not provided, use English. 
+- Step 1: Carefully analyze the input Video Cover and Video Description to understand the key message or highlight of the video, then summarize the selling point we should leverage to attract audience.
+- Step 2: Identify 3 different video title stype for the video, ex: humor, emotional, cute.
+- Step 3: For each style from Step 2, generate ONE concise, catchy video title under a soft limit of 20 characters. Make engaging, natural, and suitable for social media, along with the Video Cover it should attract audience to click and engage.
 </Task>
 
 <Output>
-- Return ONLY strict JSON with this schema: {"caption": string}
+- Return ONLY strict JSON with this schema: 
+{
+  "selling_point": "string (one-sentence summary of the video's main hook)",
+  "captions": [
+    {
+      "style": "string (the caption style, e.g. humor, ironic, emotional, etc.)",
+      "caption": "string (the catchy caption text, max 20 characters)"
+    },
+    {
+      "style": "string",
+      "caption": "string"
+    },
+    {
+      "style": "string",
+      "caption": "string"
+    }
+  ]
+}
+
 - No backticks, no code fences, no explanations, nothing before or after the JSON.
 </Output>
