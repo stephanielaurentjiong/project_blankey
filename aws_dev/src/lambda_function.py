@@ -7,6 +7,8 @@ import mimetypes
 from typing import Dict, Any
 import boto3
 from botocore.exceptions import BotoCoreError, ClientError
+from utils.caption_util import load_prompt_template
+
 
 MODEL_ID = "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
 
@@ -15,6 +17,7 @@ def generate_caption_lambda(
     image_b64: str,
     image_mime: str,
     video_description: str,
+    prompt_file: str = 'prompt.txt',
     aws_region: str = "us-east-2",
     max_tokens: int = 512,
     temperature: float = 1.0,
@@ -23,7 +26,8 @@ def generate_caption_lambda(
     """Generate a caption from base64 image and video description - Lambda version."""
     try:
         # Fill prompt template
-        filled_prompt = CAPTION_PROMPT.replace("{video_description}", video_description)
+        prompt_template = load_prompt_template(prompt_file)
+        filled_prompt = prompt_template.replace("{video_description}", video_description)
         
         if show_log:
             print(f"Image MIME: {image_mime}")

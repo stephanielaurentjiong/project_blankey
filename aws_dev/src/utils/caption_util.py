@@ -19,8 +19,8 @@ from typing import Optional
 
 def load_prompt_template(prompt_file: str) -> str:
     """Load prompt template from file with robust path resolution."""
-    resolved_path = "~/prompt.txt"
-    with open(resolved_path, "r", encoding="utf-8") as f:
+    
+    with open(prompt_file, "r", encoding="utf-8") as f:
         return f.read().strip()
 
 
