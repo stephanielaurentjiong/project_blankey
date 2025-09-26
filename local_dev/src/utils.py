@@ -45,6 +45,7 @@ def load_prompt_template(prompt_file: str) -> str:
     repo_root = get_repo_root()
     candidates = [
         prompt_file,
+        str(repo_root / "local_dev" / "phase0" / "prompts" / "caption_generation_prompt.txt"),
         str(repo_root / "phase0" / "prompts" / "caption_generation_prompt.txt"),
         str(repo_root / "prompts" / "caption_generation_prompt.txt"),
     ]
