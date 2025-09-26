@@ -677,7 +677,7 @@
     transform: scale(0.95);
   }
 
-  .selling-point {
+  .summary {
     background: var(--bg-white);
     border: var(--border-width) solid var(--primary-gray);
     padding: var(--spacing-md);

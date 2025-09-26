@@ -9,7 +9,7 @@ interface CaptionStyle {
 }
 
 interface CaptionResponse {
-  selling_point: string;
+  summary: string;
   captions: CaptionStyle[];
 }
 
@@ -161,7 +161,7 @@ export default function CaptionGenerator() {
         // Parse the output_text which should contain the JSON with captions
         const captionResponse: CaptionResponse = JSON.parse(data.output_text);
         setResults(captionResponse);
-       
+
         console.log("Parsed captions:", captionResponse);
       } else {
         throw new Error(data.error || "Unknown error from Lambda");
@@ -327,8 +327,8 @@ export default function CaptionGenerator() {
 
               <section className={`results-section ${results ? "show" : ""}`}>
                 <h2>Generated Captions</h2>
-                <div className="selling-point">
-                  <strong>Selling Point:</strong> {results.selling_point}
+                <div className="summary">
+                  <strong>{results.summary}</strong>
                 </div>
 
                 {results.captions.map((caption, index) => (
