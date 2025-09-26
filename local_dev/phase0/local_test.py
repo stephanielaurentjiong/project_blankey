@@ -3,13 +3,14 @@
 
 import json
 import sys
+import argparse
 from pathlib import Path
 # Add src to path for imports
 sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
 from caption_generator import generate_caption
 
-def load_and_test_samples():
-    """Load and test all samples from JSON file."""
+def load_and_test_samples(sample_id=None):
+    """Load and test samples from JSON file."""
     # Base directory of this script
     script_dir = Path(__file__).parent
     samples_dir = script_dir / "samples"
@@ -22,10 +23,22 @@ def load_and_test_samples():
     with open(samples_file, "r", encoding="utf-8") as f:
         data = json.load(f)
 
-    print("\n" + "=" * 50)
-    print("Testing all samples from JSON:")
+    samples = data.get("samples", [])
+    
+    # Filter by sample_id if provided
+    if sample_id:
+        samples = [s for s in samples if s.get('id') == sample_id]
+        if not samples:
+            print(f"❌ Sample with ID '{sample_id}' not found.")
+            print(f"Available sample IDs: {[s.get('id') for s in data.get('samples', [])]}")
+            return
+        print(f"\n" + "=" * 50)
+        print(f"Testing sample: {sample_id}")
+    else:
+        print("\n" + "=" * 50)
+        print("Testing all samples from JSON:")
 
-    for sample in data.get("samples", []):
+    for sample in samples:
         print(f"\n--- Testing {sample.get('id', 'unknown')} ---")
         print(f"Description: {sample.get('description', '')}")
 
@@ -49,10 +62,29 @@ def load_and_test_samples():
             print(f"❌ Error: {result.get('error')}")
 
 if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Test caption generation with sample images")
+    parser.add_argument("--id", "-i", type=str, help="Test specific sample by ID")
+    parser.add_argument("--list", "-l", action="store_true", help="List available sample IDs")
+    args = parser.parse_args()
+
     print("Caption Generator - Local Test")
     print("=" * 50)
 
-    load_and_test_samples()
+    # List available samples if requested
+    if args.list:
+        script_dir = Path(__file__).parent
+        samples_file = script_dir / "samples" / "sample_descriptions.json"
+        if samples_file.is_file():
+            with open(samples_file, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            print("Available sample IDs:")
+            for sample in data.get("samples", []):
+                print(f"  - {sample.get('id', 'unknown')}: {sample.get('description', '')[:50]}...")
+        else:
+            print("Sample file not found")
+        sys.exit(0)
+
+    load_and_test_samples(args.id)
 
     print("\n" + "=" * 50)
     print("Testing complete!")

@@ -4,6 +4,11 @@
       "id": "shiba_training",
       "image": "video_cover1.jpg",
       "description": "我和我的柴犬宝宝训练的搞笑视频，我先演示一遍动作，柴犬就跟着做一遍动作，比如坐，趴下，打滚。"
+    },
+    {
+      "id": "shiba_sleeping",
+      "image": "video_cover2.jpg",
+      "description": "我的柴犬宝宝玩了一整天后回家睡觉的视频，四仰八叉的躺在窝里，我摸着她的肚子，她舒服的翻着白眼睡觉。"
     }
   ]
 }
