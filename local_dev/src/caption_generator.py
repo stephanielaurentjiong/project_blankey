@@ -13,7 +13,7 @@ MODEL_ID = "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
 def generate_caption(
     image_path: str,
     video_description: str,
-    prompt_file: str = "phase0/prompts/caption_generation_prompt.txt",
+    prompt_file: str = "prompts/caption_generation_prompt.txt",
     aws_region: str = "us-east-2",
     max_tokens: int = 512,
     temperature: float = 1.0,

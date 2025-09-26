@@ -45,8 +45,7 @@ def load_prompt_template(prompt_file: str) -> str:
     repo_root = get_repo_root()
     candidates = [
         prompt_file,
-        str(repo_root / "local_dev" / "phase0" / "prompts" / "caption_generation_prompt.txt"),
-        str(repo_root / "phase0" / "prompts" / "caption_generation_prompt.txt"),
+        str(repo_root / "local_dev" / "prompts" / "caption_generation_prompt.txt"),
         str(repo_root / "prompts" / "caption_generation_prompt.txt"),
     ]
     resolved_path = resolve_file_path(prompt_file, candidates)
@@ -59,7 +58,7 @@ def resolve_image_path(image_path: str) -> str:
     repo_root = get_repo_root()
     candidates = [
         image_path,
-        str(repo_root / "phase0" / "samples" / Path(image_path).name),
+        str(repo_root / "local_dev" / "samples" / Path(image_path).name),
         str(repo_root / "samples" / Path(image_path).name),
     ]
     return resolve_file_path(image_path, candidates)

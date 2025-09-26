@@ -13,7 +13,7 @@ def load_and_test_samples(sample_id=None):
     """Load and test samples from JSON file."""
     # Base directory of this script
     script_dir = Path(__file__).parent
-    samples_dir = script_dir / "samples"
+    samples_dir = script_dir.parent / "samples"  # Go up one level from phase0
     samples_file = samples_dir / "sample_descriptions.json"
 
     if not samples_file.is_file():
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     # List available samples if requested
     if args.list:
         script_dir = Path(__file__).parent
-        samples_file = script_dir / "samples" / "sample_descriptions.json"
+        samples_file = script_dir.parent / "samples" / "sample_descriptions.json"
         if samples_file.is_file():
             with open(samples_file, "r", encoding="utf-8") as f:
                 data = json.load(f)
