@@ -26,18 +26,38 @@ export default function CaptionGenerator() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Image upload handlers
-  const handleImageSelect = (file: File) => {
+  const handleImageSelect = async (file: File) => {
     if (file && file.type.startsWith("image/")) {
-      setSelectedImage(file);
+      try {
+        // Convert HEIF/HEIC to JPEG if needed
+        const convertedFile = await convertHeifToJpeg(file);
+        setSelectedImage(convertedFile);
 
-      // Create preview URL
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        if (e.target?.result) {
-          setImagePreview(e.target.result as string);
+        // Create preview URL
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          if (e.target?.result) {
+            setImagePreview(e.target.result as string);
+          }
+        };
+        reader.readAsDataURL(convertedFile);
+        
+        console.log(`Image selected: ${convertedFile.name} (${convertedFile.type})`);
+      } catch (error) {
+        console.error('Image processing failed:', error);
+        
+        // Check if it's a HEIF conversion error
+        if (file.type === 'image/heic' || file.type === 'image/heif') {
+          alert('HEIF/HEIC images are not supported in this browser. Please convert to JPEG or PNG first, or try a different browser.');
+        } else {
+          alert('Failed to process image. Please try a different format.');
         }
-      };
-      reader.readAsDataURL(file);
+        
+        // Clear the file input
+        if (fileInputRef.current) {
+          fileInputRef.current.value = '';
+        }
+      }
     }
   };
 
@@ -96,6 +116,43 @@ export default function CaptionGenerator() {
     if (fileInputRef.current) {
       fileInputRef.current.value = ""; // Clear file input
     }
+  };
+
+  // Convert HEIF/HEIC to JPEG using heic2any library
+  const convertHeifToJpeg = async (file: File): Promise<File> => {
+    console.log(`Processing file: ${file.name}, type: ${file.type}, size: ${file.size} bytes`);
+    
+    if (file.type === 'image/heic' || file.type === 'image/heif') {
+      console.log('Converting HEIF/HEIC to JPEG using heic2any...');
+      
+      try {
+        // Dynamic import of heic2any
+        const heic2any = (await import('heic2any')).default;
+        
+        const convertedBlob = await heic2any({
+          blob: file,
+          toType: 'image/jpeg',
+          quality: 0.9
+        });
+        
+        // heic2any returns an array, get the first element
+        const blob = Array.isArray(convertedBlob) ? convertedBlob[0] : convertedBlob;
+        
+        const jpegFile = new File([blob], file.name.replace(/\.(heic|heif)$/i, '.jpg'), {
+          type: 'image/jpeg'
+        });
+        
+        console.log('✅ HEIF converted to JPEG:', jpegFile.name, jpegFile.size, 'bytes');
+        return jpegFile;
+        
+      } catch (error) {
+        console.error('❌ HEIF conversion failed:', error);
+        throw new Error('Failed to convert HEIF image. Please try a different format or use a different browser.');
+      }
+    }
+    
+    console.log('File is not HEIF, returning original');
+    return file; // Return original file if not HEIF
   };
 
   // Convert file to base64 for preview only

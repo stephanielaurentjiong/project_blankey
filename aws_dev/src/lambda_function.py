@@ -31,7 +31,24 @@ def parse_multipart_form_data(body: bytes, content_type: str) -> Dict[str, Any]:
                 
             # Extract field name
             if b'name="image"' in part:
-                # This is the image field
+                # Extract MIME type from Content-Type header
+                content_type_line = None
+                for line in part.split(b'\r\n'):
+                    if line.startswith(b'Content-Type:'):
+                        content_type_line = line.decode('utf-8')
+                        break
+                
+                # Extract filename from Content-Disposition header
+                filename = None
+                for line in part.split(b'\r\n'):
+                    if b'filename=' in line:
+                        filename_start = line.find(b'filename="') + 10
+                        filename_end = line.find(b'"', filename_start)
+                        if filename_start > 9 and filename_end > filename_start:
+                            filename = line[filename_start:filename_end].decode('utf-8')
+                        break
+                
+                # Get image data
                 header_end = part.find(b'\r\n\r\n')
                 if header_end != -1:
                     image_data = part[header_end + 4:]
@@ -40,8 +57,14 @@ def parse_multipart_form_data(body: bytes, content_type: str) -> Dict[str, Any]:
                         image_data = image_data[:-2]
                     
                     result['image_data'] = image_data
-                    result['image_filename'] = 'uploaded_image.jpg'
-                    result['image_content_type'] = 'image/jpeg'
+                    result['image_filename'] = filename or 'uploaded_image'
+                    
+                    # Extract MIME type from Content-Type header
+                    if content_type_line:
+                        mime_type = content_type_line.split(': ')[1].strip()
+                        result['image_content_type'] = mime_type
+                    else:
+                        result['image_content_type'] = 'image/jpeg'  # fallback
                     
             elif b'name="description"' in part:
                 # This is the description field
@@ -64,6 +87,52 @@ def parse_multipart_form_data(body: bytes, content_type: str) -> Dict[str, Any]:
 def convert_image_to_base64(image_data: bytes, mime_type: str) -> str:
     """Convert image bytes to base64 string."""
     return base64.b64encode(image_data).decode('utf-8')
+
+
+def get_extension_from_mime(mime_type: str) -> str:
+    """Get file extension from MIME type."""
+    if not mime_type:
+        return '.jpg'  # fallback
+    
+    # Map MIME types to extensions
+    mime_to_ext = {
+        'image/jpeg': '.jpg',
+        'image/jpg': '.jpg', 
+        'image/png': '.png',
+        'image/gif': '.gif',
+        'image/webp': '.webp',
+        'image/bmp': '.bmp',
+        'image/tiff': '.tiff',
+        'image/svg+xml': '.svg',
+        'image/heic': '.heic',
+        'image/heif': '.heif'
+    }
+    
+    return mime_to_ext.get(mime_type.lower(), '.jpg')
+
+
+def is_supported_format(mime_type: str) -> bool:
+    """Check if image format is supported by Bedrock Claude."""
+    supported_formats = {
+        'image/jpeg',
+        'image/jpg', 
+        'image/png',
+        'image/gif',
+        'image/webp'
+    }
+    return mime_type.lower() in supported_formats
+
+
+def convert_unsupported_format(mime_type: str) -> str:
+    """Convert unsupported format to JPEG for Bedrock compatibility."""
+    unsupported_to_jpeg = {
+        'image/heic': 'image/jpeg',
+        'image/heif': 'image/jpeg',
+        'image/bmp': 'image/jpeg',
+        'image/tiff': 'image/jpeg',
+        'image/svg+xml': 'image/jpeg'
+    }
+    return unsupported_to_jpeg.get(mime_type.lower(), mime_type)  # Return original if not in conversion map
 
 
 def generate_caption_lambda(
@@ -175,12 +244,21 @@ def lambda_handler(event, context):
                 form_data['image_data'], 
                 form_data['image_content_type']
             )
-            image_mime = form_data['image_content_type']
+            original_mime = form_data['image_content_type']
             description = form_data['description']
             
             print(f"Received file: {form_data.get('image_filename', 'unknown')}")
             print(f"File size: {len(form_data['image_data'])} bytes")
-            print(f"MIME type: {image_mime}")
+            print(f"Original MIME type: {original_mime}")
+            
+            # Check if format is supported by Bedrock
+            if not is_supported_format(original_mime):
+                print(f"⚠️  Unsupported format: {original_mime}")
+                print(f"   Converting to JPEG for Bedrock compatibility")
+                image_mime = convert_unsupported_format(original_mime)
+            else:
+                image_mime = original_mime
+                print(f"✅ Supported format: {image_mime}")
             
         else:
             # Fallback to JSON parsing for backward compatibility
