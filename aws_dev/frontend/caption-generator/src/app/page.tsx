@@ -98,16 +98,14 @@ export default function CaptionGenerator() {
     }
   };
 
-  // Convert file to base64
+  // Convert file to base64 for preview only
   const fileToBase64 = (file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const reader = new FileReader();
       reader.readAsDataURL(file);
       reader.onload = () => {
         const result = reader.result as string;
-        // Remove data:image/jpeg;base64, prefix
-        const base64 = result.split(",")[1];
-        resolve(base64);
+        resolve(result); // Keep full data URL for preview
       };
       reader.onerror = (error) => reject(error);
     });
@@ -120,31 +118,23 @@ export default function CaptionGenerator() {
     setIsGenerating(true);
 
     try {
-      // Convert image to base64
-      const imageBase64 = await fileToBase64(selectedImage);
-
-      // Prepare request payload
-      const payload = {
-        image: imageBase64,
-        description: description.trim(),
-      };
+      // Create FormData to send file directly
+      const formData = new FormData();
+      formData.append('image', selectedImage);
+      formData.append('description', description.trim());
 
       console.log("Sending request to Lambda...");
       console.log("Image file name:", selectedImage.name);
       console.log("Image file size:", selectedImage.size, "bytes");
+      console.log("Image file type:", selectedImage.type);
       console.log("Description length:", description.length, "characters");
-      console.log("Base64 image length:", imageBase64.length, "characters");
-      console.log("Full payload:", payload);
 
       // Send request to your Lambda
       const response = await fetch(
         "https://xdjzzdgrff.execute-api.us-east-2.amazonaws.com/generate",
         {
           method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(payload),
+          body: formData, // Send FormData instead of JSON
         }
       );
 
@@ -176,23 +166,35 @@ export default function CaptionGenerator() {
     }
   };
 
-  // Copy caption to clipboard
+  // Copy caption to clipboard with enhanced visual feedback
   const handleCopyCaption = async (text: string, index: number) => {
     try {
       await navigator.clipboard.writeText(text);
 
-      // Visual feedback - temporarily change button text
-      const button = document.querySelectorAll(".copy-button")[
+      // Enhanced visual feedback
+      const captionCard = document.querySelectorAll(".caption-card")[
         index
-      ] as HTMLButtonElement;
-      const originalText = button.textContent;
-      button.textContent = "COPIED!";
-      button.style.background = "#4caf50";
-
-      setTimeout(() => {
-        button.textContent = originalText;
-        button.style.background = "";
-      }, 2000);
+      ] as HTMLElement;
+      
+      if (captionCard) {
+        // Add clicked animation class
+        captionCard.classList.add("clicked");
+        
+        // Add ripple effect
+        const ripple = document.createElement("div");
+        ripple.className = "ripple-effect";
+        captionCard.appendChild(ripple);
+        
+        // Remove ripple after animation
+        setTimeout(() => {
+          ripple.remove();
+        }, 600);
+        
+        // Remove clicked class after animation
+        setTimeout(() => {
+          captionCard.classList.remove("clicked");
+        }, 2000);
+      }
     } catch (error) {
       console.error("Failed to copy text:", error);
       alert("Failed to copy to clipboard");
@@ -326,29 +328,30 @@ export default function CaptionGenerator() {
               <div className="organic-divider"></div>
 
               <section className={`results-section ${results ? "show" : ""}`}>
-                <h2>Generated Captions</h2>
+                <h2>Choose Your Caption</h2>
                 <div className="summary">
                   <strong>{results.summary}</strong>
                 </div>
 
-                {results.captions.map((caption, index) => (
-                  <div key={index} className="caption-result">
-                    <div className="result-header">
-                      <div className="result-title">
-                        Caption {index + 1} - {caption.style}
+                <div className="captions-grid">
+                  {results.captions.map((caption, index) => (
+                    <div 
+                      key={index} 
+                      className="caption-card"
+                      onClick={() => handleCopyCaption(caption.caption, index)}
+                      title="Click to copy"
+                    >
+                      <div className="caption-style-badge">
+                        {caption.style}
                       </div>
-                      <button
-                        className="copy-button"
-                        onClick={() =>
-                          handleCopyCaption(caption.caption, index)
-                        }
-                      >
-                        COPY
-                      </button>
+                      <div className="caption-text">{caption.caption}</div>
+                      <div className="click-hint">
+                        <span className="click-icon">👆</span>
+                        Click to copy
+                      </div>
                     </div>
-                    <div className="caption-text">{caption.caption}</div>
-                  </div>
-                ))}
+                  ))}
+                </div>
               </section>
             </>
           )}
