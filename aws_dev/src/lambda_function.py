@@ -9,6 +9,8 @@ import boto3
 from botocore.exceptions import BotoCoreError, ClientError
 from utils.caption_util import load_prompt_template
 import io
+import uuid
+from datetime import datetime
 
 
 MODEL_ID = "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
@@ -304,14 +306,78 @@ def lambda_handler(event, context):
                     })
                 }
         
-        # Use your adapted function
+        # Use adapted function with timing
+        start_time = datetime.now()
         result = generate_caption_lambda(
             image_b64=image_b64,
             image_mime=image_mime,
             video_description=description,
             show_log=True
         )
+        end_time = datetime.now()
+        generation_time_ms = int((end_time - start_time).total_seconds() * 1000)
         
+        # Store data to S3
+        if result['success']:
+            try:
+                s3_client = boto3.client('s3')
+                bucket_name = 'project-blankey'
+
+                date_str = datetime.now().strftime('%Y-%m-%d')
+                request_id = str(uuid.uuid4())
+                
+                # Get proper file extension from MIME type
+                file_extension = get_extension_from_mime(image_mime)
+                image_key = f'chat_data/{date_str}/images/{request_id}{file_extension}'
+                data_key = f'chat_data/{date_str}/{date_str}.json'
+
+                # Upload image file
+                s3_client.put_object(
+                    Bucket=bucket_name,
+                    Key=image_key,
+                    Body=form_data['image_data'] if 'form_data' in locals() else base64.b64decode(image_b64),
+                    ContentType=image_mime
+                )
+
+                # Load existing data for the day, or create new
+                try:
+                    existing_data = s3_client.get_object(Bucket=bucket_name, Key=data_key)
+                    daily_log = json.loads(existing_data['Body'].read().decode('utf-8'))
+                except s3_client.exceptions.NoSuchKey:
+                    # First interaction of the day
+                    daily_log = {
+                        'date': date_str,
+                        'interactions': []
+                    }
+
+                # Add new interaction directly
+                daily_log['interactions'].append({
+                    'request_id': request_id,
+                    'timestamp': datetime.now().isoformat(),
+                    'image_key': image_key,
+                    'description': description,
+                    'output': result['output_text'],
+                    'model_used': MODEL_ID,
+                    'generation_time_ms': generation_time_ms
+                })
+
+                # Upload updated daily log
+                s3_client.put_object(
+                    Bucket=bucket_name,
+                    Key=data_key,
+                    Body=json.dumps(daily_log, indent=2),
+                    ContentType='application/json'
+                )
+                
+                print(f"✅ Stored to S3:")
+                print(f"   Image: s3://{bucket_name}/{image_key}")
+                print(f"   Data: s3://{bucket_name}/{data_key}")
+                print(f"   Total interactions today: {len(daily_log['interactions'])}")
+                print(f"   Generation time: {generation_time_ms}ms")
+                
+            except Exception as s3_error:
+                print(f"⚠️  S3 storage failed: {str(s3_error)}")
+                # Continue without failing the request
         return {
             'statusCode': 200,
             'headers': {
@@ -320,6 +386,7 @@ def lambda_handler(event, context):
             },
             'body': json.dumps(result)
         }
+        
         
     except Exception as e:
         print(f"Lambda error: {str(e)}")
