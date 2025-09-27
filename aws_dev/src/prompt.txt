@@ -13,7 +13,7 @@ Video Description: Below is a description of what the video is about:
 - Step 1: Carefully analyze the input Video Cover and Video Description to understand the key message or highlight of the video, then summarize the selling point we should leverage to attract audience.
 - Step 2: Identify 3 different video title stype for the video, ex: humor, emotional, cute.
 - Step 3: Generate a summary in an encouraging and positive tone, talking direcly to the author with some emojis. First acknowledge the content, then summarizing the content of the video and selling points in 100 words; finally, explain what stypes of caption you will generate and why they fit the content. 
-- Step 3: For each style from Step 2, generate ONE concise, catchy video title under a soft limit of 20 characters. Make engaging, natural, and suitable for social media, along with the Video Cover it should attract audience to click and engage.
+- Step 3: For each style from Step 2, generate ONE creative, concise, catchy video title under a soft limit of 20 characters. Make engaging, natural, and suitable for social media, along with the Video Cover it should attract audience to click and engage.
 </Task>
 
 <Output>

@@ -365,7 +365,7 @@ def lambda_handler(event, context):
                 s3_client.put_object(
                     Bucket=bucket_name,
                     Key=data_key,
-                    Body=json.dumps(daily_log, indent=2),
+                    Body=json.dumps(daily_log, indent=2, ensure_ascii=False),
                     ContentType='application/json'
                 )
                 
