@@ -12,8 +12,8 @@ import io
 import uuid
 from datetime import datetime
 
-
-MODEL_ID = "us.anthropic.claude-3-5-sonnet-20241022-v2:0"
+#MODEL_ID = "us.anthropic.claude-3-5-sonnet-20241022-v2:0" # Claude Sonnet 3.5
+MODEL_ID = 'arn:aws:bedrock:us-east-2:324037274971:imported-model/v9ulmu1m3d1p' # Qwen 2.5 VL Instruct 3B Pretrained
 
 
 def parse_multipart_form_data(body: bytes, content_type: str) -> Dict[str, Any]:
@@ -144,7 +144,7 @@ def generate_caption_lambda(
     prompt_file: str = 'prompt.txt',
     aws_region: str = "us-east-2",
     max_tokens: int = 512,
-    temperature: float = 1.0,
+    temperature: float = 0.7,
     show_log: bool = False,
 ) -> Dict[str, Any]:
     """Generate a caption from base64 image and video description - Lambda version."""
@@ -157,8 +157,9 @@ def generate_caption_lambda(
             print(f"Image MIME: {image_mime}")
             print(f"Base64 length: {len(image_b64)}")
             print(f"Description: {video_description}")
-        
-        # Build payload
+
+        '''       
+        # Claude payload
         payload = {
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": max_tokens,
@@ -180,7 +181,16 @@ def generate_caption_lambda(
                 }
             ],
         }
-        
+        '''   
+        # Qwen 2.5 VL Payload
+        # Format: <|vision_start|><|image_pad|><|vision_end|> followed by the text prompt
+        payload = {
+            "prompt": f"<|vision_start|><|image_pad|><|vision_end|>\n\n{filled_prompt}",
+            "images": [image_b64],
+            "max_new_tokens": max_tokens,
+            "temperature": temperature
+        }
+
         # Invoke model
         bedrock = boto3.client("bedrock-runtime", region_name=aws_region)
         response = bedrock.invoke_model(modelId=MODEL_ID, body=json.dumps(payload))
@@ -189,7 +199,8 @@ def generate_caption_lambda(
         raw = response.get("body")
         text = raw.read().decode("utf-8") if hasattr(raw, "read") else str(raw)
         response_json = json.loads(text)
-        output_text = response_json['content'][0]['text']
+        #output_text = response_json['content'][0]['text'] # Claude Output Format
+        output_text = response_json['choices'][0]['text'] # Qwen 2.5 VL Output Format
         
         return {"success": True, "output_text": output_text}
         
