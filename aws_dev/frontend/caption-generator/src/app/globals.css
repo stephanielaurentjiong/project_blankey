@@ -632,13 +632,55 @@
     text-transform: uppercase;
   }
 
-  .character-count {
-    text-align: right;
-    color: var(--primary-gray);
-    font-size: 0.8rem;
-    margin-top: var(--spacing-xs);
-  }
+ /* Description footer with character count and model selector */
+.description-footer {
+  display: flex;
+  justify-content: space-between;  /* This pushes items to opposite ends */
+  align-items: center;              /* Vertically centers both items */
+  margin-top: var(--spacing-sm);
+  gap: var(--spacing-md);
+}
 
+.character-count {
+  font-size: 0.85rem;
+  color: var(--text-secondary);
+  /* Removed text-align: right - not needed with flexbox */
+}
+
+/* Minimalist model dropdown - matches brutalist design */
+.model-dropdown-minimal {
+  padding: 6px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: var(--primary-dark);
+  background: var(--bg-white);
+  border: var(--border-width) solid var(--primary-dark);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  font-family: 'JetBrains Mono', monospace;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.model-dropdown-minimal:hover {
+  background: var(--bg-light);
+  border-color: var(--primary-gray);
+  transform: translateY(-1px);
+}
+
+.model-dropdown-minimal:focus {
+  outline: none;
+  border-color: var(--primary-dark);
+  box-shadow: inset 4px 4px 0px rgba(0, 0, 0, 0.1);
+}
+
+.model-dropdown-minimal option {
+  padding: 8px;
+  background: var(--bg-white);
+  color: var(--primary-dark);
+  font-weight: 700;
+  font-family: 'JetBrains Mono', monospace;
+}
   /* Image Remove Button */
   .image-preview-wrapper {
     position: relative;
@@ -817,3 +859,5 @@
       opacity: 0;
     }
   }
+
+  

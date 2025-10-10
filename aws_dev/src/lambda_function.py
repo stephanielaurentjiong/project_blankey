@@ -12,12 +12,38 @@ import io
 import uuid
 from datetime import datetime
 
+from models.model_config import get_model_config
+from models.handlers.anthropic_handler import AnthropicHandler
+from models.handlers.qwen_handler import QwenHandler
+
 #MODEL_ID = "us.anthropic.claude-3-5-sonnet-20241022-v2:0" # Claude Sonnet 3.5
 MODEL_ID = 'arn:aws:bedrock:us-east-2:324037274971:imported-model/v9ulmu1m3d1p' # Qwen 2.5 VL Instruct 3B Pretrained
 
+"""
+Factory function: creates the correct handler for a given model.
+Returns:
+    tuple: (model_config dict, handler instance)
+"""
+def get_model_handler(model_key: str):
+    # Get model config 
+    model_config = get_model_config(model_key)
+    
+    # Get the provider name
+    provider = model_config["provider"]
 
+    if provider == "anthropic":
+        handler = AnthropicHandler();
+    elif provider == "qwen":
+        handler = QwenHandler();
+    else:
+        raise ValueError(f"No handler implemented for provider: {provider}")
+
+    return model_config, handler
+
+
+"""Parse multipart form data from Lambda event."""
 def parse_multipart_form_data(body: bytes, content_type: str) -> Dict[str, Any]:
-    """Parse multipart form data from Lambda event."""
+  
     try:
         # Extract boundary from content type
         boundary = content_type.split('boundary=')[1].encode('utf-8')
@@ -78,7 +104,19 @@ def parse_multipart_form_data(body: bytes, content_type: str) -> Dict[str, Any]:
                         description = description[:-2]
                     
                     result['description'] = description.decode('utf-8')
-        
+            
+            elif b'name="modelId"' in part:
+                # This is the model selection field from the frontend
+                # Extract which AI model the user selected
+                header_end = part.find(b'\r\n\r\n')
+                if header_end != -1:
+                    model_id = part[header_end + 4:]
+                    # Remove trailing boundary markers
+                    if model_id.endswith(b'\r\n'):
+                        model_id = model_id[:-2]
+                    
+                    # Store the selected model ID
+                    result['modelId'] = model_id.decode('utf-8')
         return result
         
     except Exception as e:
@@ -86,8 +124,9 @@ def parse_multipart_form_data(body: bytes, content_type: str) -> Dict[str, Any]:
         return {}
 
 
+"""Convert image bytes to base64 string."""
 def convert_image_to_base64(image_data: bytes, mime_type: str) -> str:
-    """Convert image bytes to base64 string."""
+    
     return base64.b64encode(image_data).decode('utf-8')
 
 
@@ -141,6 +180,7 @@ def generate_caption_lambda(
     image_b64: str,
     image_mime: str,
     video_description: str,
+    model_key: str = "claude-sonnet-4",
     prompt_file: str = 'prompt.txt',
     aws_region: str = "us-east-2",
     max_tokens: int = 512,
@@ -149,11 +189,15 @@ def generate_caption_lambda(
 ) -> Dict[str, Any]:
     """Generate a caption from base64 image and video description - Lambda version."""
     try:
+        model_config, handler = get_model_handler(model_key)
+
         # Fill prompt template
         prompt_template = load_prompt_template(prompt_file)
         filled_prompt = prompt_template.replace("{video_description}", video_description)
         
         if show_log:
+            print(f"Using model: {model_config['name']} ({model_key})")
+            print(f"Provider: {model_config['provider']}")
             print(f"Image MIME: {image_mime}")
             print(f"Base64 length: {len(image_b64)}")
             print(f"Description: {video_description}")
@@ -184,23 +228,39 @@ def generate_caption_lambda(
         '''   
         # Qwen 2.5 VL Payload
         # Format: <|vision_start|><|image_pad|><|vision_end|> followed by the text prompt
-        payload = {
-            "prompt": f"<|vision_start|><|image_pad|><|vision_end|>\n\n{filled_prompt}",
-            "images": [image_b64],
-            "max_new_tokens": max_tokens,
-            "temperature": temperature
-        }
+        # payload = {
+        #     "prompt": f"<|vision_start|><|image_pad|><|vision_end|>\n\n{filled_prompt}",
+        #     "images": [image_b64],
+        #     "max_new_tokens": max_tokens,
+        #     "temperature": temperature
+        # }
+
+        # Build payload using the model-specific handler
+        # Each handler knows its own format 
+        payload = handler.build_payload(
+            image_b64=image_b64,
+            image_mime=image_mime,
+            prompt=filled_prompt,
+            max_tokens=max_tokens,
+            temperature=temperature
+        )
+        
+        if show_log:
+            print(f"Payload structure: {list(payload.keys())}")
+
 
         # Invoke model
         bedrock = boto3.client("bedrock-runtime", region_name=aws_region)
-        response = bedrock.invoke_model(modelId=MODEL_ID, body=json.dumps(payload))
+        response = bedrock.invoke_model(modelId=model_config["id"], body=json.dumps(payload))
         
         # Parse response
         raw = response.get("body")
         text = raw.read().decode("utf-8") if hasattr(raw, "read") else str(raw)
         response_json = json.loads(text)
-        #output_text = response_json['content'][0]['text'] # Claude Output Format
-        output_text = response_json['choices'][0]['text'] # Qwen 2.5 VL Output Format
+
+        # Parse response using the model-specific handler
+        # Each handler knows how to extract text from its model's response
+        output_text = handler.parse_response(response_json)
         
         return {"success": True, "output_text": output_text}
         
@@ -319,10 +379,15 @@ def lambda_handler(event, context):
         
         # Use adapted function with timing
         start_time = datetime.now()
+
+        # Extract model choice from form data (default to claude-sonnet-4 if not provided)
+        model_key = form_data.get('modelId', 'claude-sonnet-4') if 'form_data' in locals() else 'claude-sonnet-4'
+
         result = generate_caption_lambda(
             image_b64=image_b64,
             image_mime=image_mime,
             video_description=description,
+            model_key=model_key, 
             show_log=True
         )
         end_time = datetime.now()
@@ -368,7 +433,7 @@ def lambda_handler(event, context):
                     'image_key': image_key,
                     'description': description,
                     'output': result['output_text'],
-                    'model_used': MODEL_ID,
+                    'model_used': model_key,
                     'generation_time_ms': generation_time_ms
                 })
 

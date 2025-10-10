@@ -1,4 +1,7 @@
+
+
 "use client";
+declare module "heic2any";
 
 import { useState, useRef } from "react";
 
@@ -13,6 +16,32 @@ interface CaptionResponse {
   captions: CaptionStyle[];
 }
 
+interface ModelOption {
+  id: string; // Model key (e.g., 'claude-sonnet-4')
+  name: string; // Display name
+  description: string;
+  icon: string;
+  provider: string; // Provider name (e.g., 'anthropic')
+}
+
+// Available models - hardcoded for now, could fetch from API later
+const AVAILABLE_MODELS: ModelOption[] = [
+  {
+    id: "claude-sonnet-4",
+    name: "Claude Sonnet 4.0",
+    description: "Best for creative writing and complex reasoning",
+    icon: "🧠",
+    provider: "anthropic"
+  },
+  {
+    id: "qwen-2.5-vl",
+    name: "QWen 2.5 VL",
+    description: "Fast and efficient vision-language model",
+    icon: "⚡",
+    provider: "qwen"
+  }
+];
+
 export default function CaptionGenerator() {
   // State management
   const [selectedImage, setSelectedImage] = useState<File | null>(null);
@@ -21,6 +50,7 @@ export default function CaptionGenerator() {
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [results, setResults] = useState<CaptionResponse | null>(null);
   const [isDragging, setIsDragging] = useState<boolean>(false);
+  const [selectedModel, setSelectedModel] = useState<string>("claude-sonnet-4");
 
   // Ref for file input
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -179,6 +209,7 @@ export default function CaptionGenerator() {
       const formData = new FormData();
       formData.append('image', selectedImage);
       formData.append('description', description.trim());
+      formData.append("modelId", selectedModel);
 
       console.log("Sending request to Lambda...");
       console.log("Image file name:", selectedImage.name);
@@ -343,6 +374,22 @@ export default function CaptionGenerator() {
             </div>
           </section>
 
+          {/* Model Selection Dropdown
+          <section className="model-section-floating">
+            <select
+              className="model-dropdown-minimal"
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              title="Select AI Model"
+            >
+              {AVAILABLE_MODELS.map((model) => (
+                <option key={model.id} value={model.id}>
+                  {model.icon} {model.name}
+                </option>
+              ))}
+            </select>
+          </section> */}
+
           {/* Description Section */}
           <section className="description-section">
             <h2>Video Description</h2>
@@ -353,8 +400,23 @@ export default function CaptionGenerator() {
               onChange={handleDescriptionChange}
               rows={4}
             />
-            <div className="character-count">
-              {description.length} characters
+            <div className="description-footer">
+              <div className="character-count">
+                {description.length} characters
+              </div>
+              {/* Model selector in bottom right */}
+              <select
+                className="model-dropdown-minimal"
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                title="Select AI Model"
+              >
+                {AVAILABLE_MODELS.map((model) => (
+                  <option key={model.id} value={model.id}>
+                    {model.icon} {model.name}
+                  </option>
+                ))}
+              </select>
             </div>
           </section>
 
@@ -392,15 +454,13 @@ export default function CaptionGenerator() {
 
                 <div className="captions-grid">
                   {results.captions.map((caption, index) => (
-                    <div 
-                      key={index} 
+                    <div
+                      key={index}
                       className="caption-card"
                       onClick={() => handleCopyCaption(caption.caption, index)}
                       title="Click to copy"
                     >
-                      <div className="caption-style-badge">
-                        {caption.style}
-                      </div>
+                      <div className="caption-style-badge">{caption.style}</div>
                       <div className="caption-text">{caption.caption}</div>
                       <div className="click-hint">
                         <span className="click-icon">👆</span>
